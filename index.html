@@ -57,6 +57,7 @@ a{color:var(--teal);text-decoration:none}
 #boot .spin{width:30px;height:30px;border:3px solid rgba(255,255,255,.28);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 #buildTag{position:fixed;bottom:6px;right:8px;z-index:700;font:10px/1 ui-monospace,Menlo,monospace;color:rgba(120,120,120,.55);pointer-events:none;letter-spacing:.02em}
+.video-box iframe{width:100%;aspect-ratio:16/9;border:0;display:block;background:#000}
 #auth{position:fixed;inset:0;z-index:500;background:linear-gradient(160deg,var(--teal-deep),var(--teal));display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto}
 .authcard{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);width:100%;max-width:410px;padding:34px 34px 30px}
 .authcard .brand{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:22px}
@@ -238,7 +239,7 @@ a{color:var(--teal);text-decoration:none}
 </head>
 <body>
 <div id="boot"><div class="bootcard"><img id="bootLogo" alt="Partners"><div class="spin"></div></div></div>
-<div id="buildTag">build 2026-07-14-1</div>
+<div id="buildTag">build 2026-07-14-3</div>
 <div id="auth"><div class="authcard"><div class="brand"><h1>Partners Playbook</h1><div class="sub">Academy</div></div><div><div class="field"><label>Work email</label><input type="email" id="auEmail" placeholder="you@partnersmortgage.com" autocomplete="username"></div><div class="field"><label>Password</label><input type="password" id="auPass" placeholder="Your password" autocomplete="current-password"></div><div class="err" id="auErr"></div><button class="btn btn-primary btn-lg" onclick="try{DATA.signIn(document.getElementById('auEmail').value.trim(),document.getElementById('auPass').value).catch(function(e2){document.getElementById('auErr').textContent=e2.message||'Could not sign in.';});}catch(e){}">Sign in</button><div class="ym">You matter.</div></div></div></div>
 <div id="app" class="hide">
   <div class="topbar">
@@ -294,6 +295,7 @@ function svg(n,x){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentC
 var COVERS=['linear-gradient(135deg,#00818D,#0A5860)','linear-gradient(135deg,#016671,#00818D)','linear-gradient(135deg,#E8951A,#FFAC27)','linear-gradient(135deg,#4A5A66,#1F2A2D)','linear-gradient(135deg,#2E9E6B,#0A5860)'];
 function coverFor(c){ var i=(c.order||0)%COVERS.length; return c.coverColor||COVERS[i]; }
 
+function compressPoster(file){ return new Promise(function(res,rej){ var r=new FileReader(); r.onerror=function(){rej(new Error('Could not read the image.'));}; r.onload=function(){ var img=new Image(); img.onerror=function(){rej(new Error('Not a valid image.'));}; img.onload=function(){ var MAX=640, w=img.width, h=img.height; if(w>MAX){ h=Math.round(h*MAX/w); w=MAX; } var c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); res(c.toDataURL('image/jpeg',0.7)); }; img.src=r.result; }; r.readAsDataURL(file); }); }
 function toast(msg,err){ var t=e('div',{class:'toast'+(err?' err':''),html:svg(err?'alert':'check')+'<span>'+esc(msg)+'</span>'}); $('#toast').appendChild(t); setTimeout(function(){ t.style.transition='.3s'; t.style.opacity='0'; setTimeout(function(){t.remove();},320); },2600); }
 function modal(title,body,foot,cls){ var host=$('#modalHost'); host.innerHTML=''; var ov=e('div',{class:'overlay'}); ov.onclick=function(ev){ if(ev.target===ov) closeModal(); }; var m=e('div',{class:'modal'+(cls?' '+cls:'')}); var h=e('div',{class:'modal-head'}); h.innerHTML='<h2>'+esc(title)+'</h2>'; var xb=e('button',{class:'icon-btn',html:svg('x')}); xb.onclick=closeModal; h.appendChild(xb); m.appendChild(h); var b=e('div',{class:'modal-body'}); if(body) b.appendChild(body); m.appendChild(b); if(foot) m.appendChild(foot); ov.appendChild(m); host.appendChild(ov); return m; }
 function closeModal(){ $('#modalHost').innerHTML=''; }
@@ -340,7 +342,7 @@ function mockSeed(){
   db.guides[gid]={ id:gid, type:'scribe', title:'Log a new lead in GoHighLevel', description:'The standard steps for adding and tagging a new lead.', deleted:false, settings:{dotColor:'#FFAC27',showTOC:false}, steps:[ {id:'s1',kind:'step',text:'Open GoHighLevel and go to the Contacts tab',image:null,annotations:[]}, {id:'s2',kind:'step',text:'Click Add Contact in the top right',image:null,annotations:[]}, {id:'s3',kind:'tip',text:'Set the source tag first. It drives which nurture cadence fires.'}, {id:'s4',kind:'step',text:'Enter name, phone, and email, then save',image:null,annotations:[]} ] };
   var cid='demoCourse1';
   db.courses[cid]={ id:cid, title:'New Loan Officer Onboarding', description:'Everything a new LO needs in their first week at Partners, from systems to first calls.', order:0, published:true, coverColor:COVERS[0], createdAt:Date.now(), updatedAt:Date.now(),
-    chapters:[ { id:'c1', title:'Getting set up', lessons:[ {id:'l1',title:'Log a new lead in GoHighLevel',type:'guide',guideId:gid}, {id:'l2',title:'Welcome to Partners (video)',type:'video',videoUrl:''} ] }, { id:'c2', title:'Your first pipeline', lessons:[ {id:'l3',title:'Submitting a loan file',type:'guide',guideId:gid} ] } ] };
+    chapters:[ { id:'c1', title:'Getting set up', lessons:[ {id:'l1',title:'Log a new lead in GoHighLevel',type:'guide',guideId:gid}, {id:'l2',title:'Welcome to Partners (video)',type:'video',videoSource:'r2',videoUrl:''} ] }, { id:'c2', title:'Your first pipeline', lessons:[ {id:'l3',title:'Submitting a loan file',type:'guide',guideId:gid} ] } ] };
   mockSave(db); return db;
 }
 function mockData(){
@@ -479,7 +481,7 @@ function viewCourse(c){
         var isDone=prog.completed&&prog.completed[l.id];
         var row=e('div',{class:'lrow'+(isDone?' done':'')});
         var kindIc=l.type==='video'?'video':(l.type==='both'?'layers':'book');
-        row.innerHTML='<div class="tick">'+(isDone?svg('check'):'')+'</div><div class="ic'+(l.type==='video'?' vid':'')+'">'+svg(kindIc)+'</div><div class="lt"><b>'+esc(l.title)+'</b><span>'+(l.type==='video'?'Video':(l.type==='both'?'Guide + video':'Manual'))+'</span></div><span class="go">'+svg('chev')+'</span>';
+        row.innerHTML='<div class="tick">'+(isDone?svg('check'):'')+'</div><div class="ic'+(l.type==='video'?' vid':'')+'">'+svg(kindIc)+'</div><div class="lt"><b>'+esc(l.title)+'</b><span>'+(l.type==='video'?'Video':(l.type==='both'?'Guide + video':'Manual'))+(l.durationLabel?' \u00b7 '+esc(l.durationLabel):'')+'</span></div><span class="go">'+svg('chev')+'</span>';
         row.onclick=function(){ go('lesson',{courseId:co.id,lessonId:l.id}); };
         ll.appendChild(row);
       });
@@ -532,7 +534,9 @@ function markComplete(co,L,total){
 function renderLessonContent(body,L,co,prog,total){
   body.innerHTML='';
   if(L.type==='video'||L.type==='both'){
-    if(L.videoUrl){ var vb=e('div',{class:'video-box'}); var v=e('video',{controls:'',preload:'metadata',playsinline:''}); v.src=L.videoUrl; if(L.videoPoster) v.setAttribute('poster',L.videoPoster); vb.appendChild(v); body.appendChild(vb);
+    var vsrc=L.videoSource||(/cloudflarestream\.com/.test(L.videoUrl||'')?'stream':'r2');
+    if(L.videoUrl&&vsrc==='stream'){ var sb=e('div',{class:'video-box'}); var ifr=e('iframe',{src:L.videoUrl,allow:'accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;',allowfullscreen:'true'}); sb.appendChild(ifr); body.appendChild(sb); markComplete(co,L,total); }
+    else if(L.videoUrl){ var vb=e('div',{class:'video-box'}); var v=e('video',{controls:'',preload:'metadata',playsinline:''}); v.src=L.videoUrl; if(L.videoPoster) v.setAttribute('poster',L.videoPoster); vb.appendChild(v); body.appendChild(vb);
       var doneFired=false; v.addEventListener('timeupdate',function(){ if(!doneFired&&v.duration&&v.currentTime/v.duration>=0.9){ doneFired=true; markComplete(co,L,total); } }); v.addEventListener('ended',function(){ if(!doneFired){ doneFired=true; markComplete(co,L,total); } }); }
     else { body.appendChild(e('div',{class:'gcallout note',html:svg('video')+'<div>No video has been attached to this lesson yet.</div>'})); if(L.type==='video') markComplete(co,L,total); }
   }
@@ -559,6 +563,10 @@ function viewAdmin(c){
   if(ME.role!=='admin'){ go('dash'); return; }
   var page=e('div',{class:'page'});
   page.appendChild(e('div',{class:'hero',html:'<h1>Content <em>console</em>.</h1><p>Build courses, attach manuals and videos, and track who is progressing.</p>'}));
+  var studio=e('div',{style:'display:flex;align-items:center;gap:14px;background:var(--teal-tint2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:18px'});
+  studio.appendChild(e('div',{style:'flex:1;font-size:13.5px;color:var(--mid)',html:'<b style="color:var(--ink)">Guide Studio</b> is where manuals are written and recorded. It is PIN protected, and guides sync here automatically.'}));
+  var sbtn=e('button',{class:'btn btn-primary btn-sm',html:svg('book')+'Open Guide Studio'}); sbtn.onclick=function(){ window.open('studio.html','_blank'); }; studio.appendChild(sbtn);
+  page.appendChild(studio);
   var tabs=e('div',{class:'adm-tabs'});
   [['courses','Courses'],['people','Registrants']].forEach(function(o){ var b=e('button',{class:ADM_TAB===o[0]?'on':'',text:o[1]}); b.onclick=function(){ ADM_TAB=o[0]; render(); }; tabs.appendChild(b); });
   page.appendChild(tabs);
@@ -614,7 +622,7 @@ function viewBuilder(c){
       box.appendChild(bch);
       (chap.lessons||[]).forEach(function(l,li){
         var lr=e('div',{class:'blesson'});
-        lr.innerHTML='<div class="li">'+svg(l.type==='video'?'video':(l.type==='both'?'layers':'book'))+'</div><div class="lg"><b>'+esc(l.title||'Untitled lesson')+'</b><span>'+(l.type==='video'?'Video':(l.type==='both'?'Guide + video':'Manual'))+'</span></div>';
+        lr.innerHTML='<div class="li">'+svg(l.type==='video'?'video':(l.type==='both'?'layers':'book'))+'</div><div class="lg"><b>'+esc(l.title||'Untitled lesson')+'</b><span>'+(l.type==='video'?'Video':(l.type==='both'?'Guide + video':'Manual'))+(l.durationLabel?' \u00b7 '+esc(l.durationLabel):'')+'</span></div>';
         var le=e('button',{class:'icon-btn',title:'Edit',html:svg('edit')}); le.onclick=function(){ lessonModal(co,chap,l); }; lr.appendChild(le);
         var lu=e('button',{class:'icon-btn',title:'Up',html:svg('up')}); lu.onclick=function(){ if(li>0){ var t=chap.lessons[li-1]; chap.lessons[li-1]=chap.lessons[li]; chap.lessons[li]=t; save(); go('builder',{editId:co.id}); } }; lr.appendChild(lu);
         var ld=e('button',{class:'icon-btn',title:'Delete',html:svg('trash')}); ld.onclick=function(){ chap.lessons.splice(li,1); save(); go('builder',{editId:co.id}); }; lr.appendChild(ld);
@@ -637,14 +645,28 @@ function lessonModal(co,chap,lesson){
   var body=e('div');
   var f1=e('div',{class:'field'}); f1.innerHTML='<label>Lesson title</label>'; var ti=e('input',{type:'text',value:L.title,placeholder:'e.g. Submitting a loan file'}); f1.appendChild(ti); body.appendChild(f1);
   var f2=e('div',{class:'field'}); f2.innerHTML='<label>Lesson type</label>'; var sel=e('select'); sel.innerHTML='<option value="guide">Manual (Playbook guide)</option><option value="video">Video (Cloudflare R2)</option><option value="both">Both</option>'; sel.value=L.type; f2.appendChild(sel); body.appendChild(f2);
-  var gWrap=e('div',{class:'field'}); gWrap.innerHTML='<label>Manual</label>'; var gsel=e('select'); var gopts='<option value="">Select a guide...</option>'; (CTX.guides||[]).forEach(function(g){ gopts+='<option value="'+esc(g.id)+'">'+esc(g.title||'Untitled guide')+'</option>'; }); gsel.innerHTML=gopts; gsel.value=L.guideId||''; gWrap.appendChild(gsel); if(!(CTX.guides||[]).length) gWrap.appendChild(e('div',{class:'hint',text:'No guides found yet. Build guides in the Playbook guide tool, with cloud sync on, and they appear here.'})); body.appendChild(gWrap);
-  var vWrap=e('div',{class:'field'}); vWrap.innerHTML='<label>Video URL (Cloudflare R2 public link)</label>'; var vin=e('input',{type:'text',value:L.videoUrl||'',placeholder:'https://pub-xxxx.r2.dev/onboarding/welcome.mp4'}); vWrap.appendChild(vin); vWrap.appendChild(e('div',{class:'hint',text:'Paste the public R2 object URL to the .mp4 file. It plays inline for learners.'})); body.appendChild(vWrap);
-  function sync(){ var t=sel.value; gWrap.style.display=(t==='guide'||t==='both')?'block':'none'; vWrap.style.display=(t==='video'||t==='both')?'block':'none'; }
+  var gWrap=e('div',{class:'field'}); gWrap.innerHTML='<label>Manual</label>'; var gsel=e('select'); var gopts='<option value="">Select a guide...</option>'; (CTX.guides||[]).forEach(function(g){ gopts+='<option value="'+esc(g.id)+'">'+esc(g.title||'Untitled guide')+'</option>'; }); gsel.innerHTML=gopts; gsel.value=L.guideId||''; gWrap.appendChild(gsel); if(!(CTX.guides||[]).length) gWrap.appendChild(e('div',{class:'hint',text:'No manuals found yet. Open the Guide Studio from the Console tab to build one. With cloud sync on it appears here automatically.'})); body.appendChild(gWrap);
+  var vGroup=e('div');
+  var sWrap=e('div',{class:'field'}); sWrap.innerHTML='<label>Video source</label>'; var srcSel=e('select'); srcSel.innerHTML='<option value="r2">Cloudflare R2 (paste public link)</option><option value="stream">Cloudflare Stream (paste embed link)</option>'; srcSel.value=L.videoSource||(/cloudflarestream\.com/.test(L.videoUrl||'')?'stream':'r2'); sWrap.appendChild(srcSel); vGroup.appendChild(sWrap);
+  var vWrap=e('div',{class:'field'}); var vlab=e('label',{text:'Video link (R2)'}); vWrap.appendChild(vlab); var vin=e('input',{type:'text',value:L.videoUrl||'',placeholder:'https://pub-xxxx.r2.dev/onboarding/welcome.mp4'}); vWrap.appendChild(vin); var vhint=e('div',{class:'hint',text:''}); vWrap.appendChild(vhint); vGroup.appendChild(vWrap);
+  var dWrap=e('div',{class:'field'}); dWrap.innerHTML='<label>Duration label (optional)</label>'; var din=e('input',{type:'text',value:L.durationLabel||'',placeholder:'12 min'}); dWrap.appendChild(din); vGroup.appendChild(dWrap);
+  var pendingPoster=L.videoPoster||'';
+  var pWrap=e('div',{class:'field'}); pWrap.innerHTML='<label>Cover image (optional)</label>'; var pRow=e('div',{style:'display:flex;align-items:center;gap:10px'});
+  var pPrev=e('img',{style:'width:96px;height:54px;object-fit:cover;border-radius:6px;border:1px solid var(--border);display:'+(pendingPoster?'block':'none')}); if(pendingPoster) pPrev.src=pendingPoster;
+  var pFile=e('input',{type:'file',accept:'image/*',style:'display:none'});
+  var pBtn=e('button',{class:'btn btn-ghost btn-sm',html:svg('plus')+'Upload image'}); pBtn.onclick=function(){ pFile.click(); };
+  var pClr=e('button',{class:'btn btn-ghost btn-sm',text:'Remove',style:'display:'+(pendingPoster?'inline-flex':'none')}); pClr.onclick=function(){ pendingPoster=''; pPrev.style.display='none'; pClr.style.display='none'; pFile.value=''; };
+  pFile.addEventListener('change',function(ev){ var f=ev.target.files&&ev.target.files[0]; if(!f) return; compressPoster(f).then(function(d){ pendingPoster=d; pPrev.src=d; pPrev.style.display='block'; pClr.style.display='inline-flex'; }).catch(function(er){ toast(er.message,true); }); });
+  pRow.appendChild(pPrev); pRow.appendChild(pBtn); pRow.appendChild(pClr); pRow.appendChild(pFile); pWrap.appendChild(pRow); pWrap.appendChild(e('div',{class:'hint',text:'Shown as the video preview frame before play. Kept small automatically.'})); vGroup.appendChild(pWrap);
+  body.appendChild(vGroup);
+  function syncSrc(){ if(srcSel.value==='stream'){ vlab.textContent='Cloudflare Stream embed link'; vin.placeholder='https://customer-xxxx.cloudflarestream.com/VIDEO_ID/iframe'; vhint.textContent='Paste the iframe embed link from the Stream dashboard. Adaptive playback, plays inline for learners.'; } else { vlab.textContent='Video link (R2)'; vin.placeholder='https://pub-xxxx.r2.dev/onboarding/welcome.mp4'; vhint.textContent='Paste the public link to the lesson MP4 on R2. Upload the compressed version.'; } }
+  srcSel.onchange=syncSrc; syncSrc();
+  function sync(){ var t=sel.value; gWrap.style.display=(t==='guide'||t==='both')?'block':'none'; vGroup.style.display=(t==='video'||t==='both')?'block':'none'; }
   sel.onchange=sync; sync();
   var foot=e('div',{class:'modal-foot'});
   var cancel=e('button',{class:'btn btn-ghost',text:'Cancel'}); cancel.onclick=closeModal;
   var savb=e('button',{class:'btn btn-primary',html:svg('check')+(isNew?'Add lesson':'Save')});
-  savb.onclick=function(){ L.title=(ti.value||'').trim()||'Untitled lesson'; L.type=sel.value; L.guideId=gsel.value; L.videoUrl=(vin.value||'').trim(); if((L.type==='guide'||L.type==='both')&&!L.guideId){ toast('Pick a manual, or change the type.',true); return; } if((L.type==='video'||L.type==='both')&&!L.videoUrl){ toast('Paste a video URL, or change the type.',true); return; } chap.lessons=chap.lessons||[]; if(isNew){ chap.lessons.push(L); } else { for(var i=0;i<chap.lessons.length;i++) if(chap.lessons[i].id===L.id) chap.lessons[i]=L; } DATA.saveCourse(co).then(function(){ closeModal(); toast(isNew?'Lesson added':'Lesson saved'); go('builder',{editId:co.id}); }); };
+  savb.onclick=function(){ L.title=(ti.value||'').trim()||'Untitled lesson'; L.type=sel.value; L.guideId=gsel.value; L.videoUrl=(vin.value||'').trim(); L.videoSource=srcSel.value; L.durationLabel=(din.value||'').trim(); L.videoPoster=pendingPoster||''; if((L.type==='guide'||L.type==='both')&&!L.guideId){ toast('Pick a manual, or change the type.',true); return; } if((L.type==='video'||L.type==='both')&&!L.videoUrl){ toast('Paste a video URL, or change the type.',true); return; } chap.lessons=chap.lessons||[]; if(isNew){ chap.lessons.push(L); } else { for(var i=0;i<chap.lessons.length;i++) if(chap.lessons[i].id===L.id) chap.lessons[i]=L; } DATA.saveCourse(co).then(function(){ closeModal(); toast(isNew?'Lesson added':'Lesson saved'); go('builder',{editId:co.id}); }); };
   foot.appendChild(cancel); foot.appendChild(savb);
   modal(isNew?'Add lesson':'Edit lesson',body,foot);
 }
@@ -681,8 +703,8 @@ function admPeople(host){
   });
 }
 
-/* ============ BOOT (build 2026-07-14-1) ============ */
-try{ console.log('Partners Playbook Academy build 2026-07-14-1'); }catch(e){}
+/* ============ BOOT (build 2026-07-14-3) ============ */
+try{ console.log('Partners Playbook Academy build 2026-07-14-3'); }catch(e){}
 function _clearSplash(){ try{ var boot=$('#boot'); if(boot) boot.classList.add('hide'); }catch(e){} }
 function _ensureData(){ if(!(window.DATA&&DATA.onAuth)){ try{ MODE='mock'; mockData(); }catch(e){} } }
 function _showLogin(){ _clearSplash(); _ensureData(); try{ if(!ME){ $('#auth').classList.remove('hide'); if(DATA&&DATA.onAuth){ DATA.onAuth(onAuthChanged); } else { renderAuth(); } } }catch(e){ try{ renderAuth(); }catch(e2){} } }
