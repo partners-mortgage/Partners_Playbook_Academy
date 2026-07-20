@@ -239,7 +239,7 @@ a{color:var(--teal);text-decoration:none}
 </head>
 <body>
 <div id="boot"><div class="bootcard"><img id="bootLogo" alt="Partners"><div class="spin"></div></div></div>
-<div id="buildTag">build 2026-07-14-3</div>
+<div id="buildTag">build 2026-07-14-5</div>
 <div id="auth"><div class="authcard"><div class="brand"><h1>Partners Playbook</h1><div class="sub">Academy</div></div><div><div class="field"><label>Work email</label><input type="email" id="auEmail" placeholder="you@partnersmortgage.com" autocomplete="username"></div><div class="field"><label>Password</label><input type="password" id="auPass" placeholder="Your password" autocomplete="current-password"></div><div class="err" id="auErr"></div><button class="btn btn-primary btn-lg" onclick="try{DATA.signIn(document.getElementById('auEmail').value.trim(),document.getElementById('auPass').value).catch(function(e2){document.getElementById('auErr').textContent=e2.message||'Could not sign in.';});}catch(e){}">Sign in</button><div class="ym">You matter.</div></div></div></div>
 <div id="app" class="hide">
   <div class="topbar">
@@ -329,6 +329,8 @@ function fbData(){
   DATA.setLessonComplete=function(user,course,lessonId,total){ var id=user.uid+'__'+course.id; var ref=FB.fs.collection('progress').doc(id); var upd={}; upd['completed.'+lessonId]=true; upd.uid=user.uid; upd.email=user.email; upd.name=user.name; upd.courseId=course.id; upd.courseTitle=course.title; upd.total=total; upd.updatedAt=Date.now(); return ref.set({uid:user.uid,email:user.email,name:user.name,courseId:course.id,courseTitle:course.title,total:total,completed:{},createdAt:Date.now()},{merge:true}).then(function(){ return ref.update(upd); }); };
   DATA.courseProgress=function(courseId){ return FB.fs.collection('progress').where('courseId','==',courseId).get().then(function(q){ var a=[]; q.forEach(function(d){ a.push(d.data()); }); return a; }); };
   DATA.listUsers=function(){ return FB.fs.collection('users').get().then(function(q){ var a=[]; q.forEach(function(d){ var u=d.data(); u.uid=d.id; a.push(u); }); return a; }); };
+  DATA.setUserRole=function(uid,role){ return FB.fs.collection('users').doc(uid).update({role:role}); };
+  DATA.setUserName=function(uid,name){ return FB.fs.collection('users').doc(uid).update({name:name}); };
 }
 /* ---- Local mock implementation (for offline demo + sandbox) ---- */
 var MOCK_KEY='pm_lms_mock_v1';
@@ -361,6 +363,8 @@ function mockData(){
   DATA.setLessonComplete=function(user,course,lessonId,total){ var id=user.uid+'__'+course.id; var p=db.progress[id]||{uid:user.uid,email:user.email,name:user.name,courseId:course.id,courseTitle:course.title,completed:{},createdAt:Date.now()}; p.completed[lessonId]=true; p.total=total; p.updatedAt=Date.now(); db.progress[id]=p; mockSave(db); return Promise.resolve(); };
   DATA.courseProgress=function(courseId){ return Promise.resolve(Object.keys(db.progress).map(function(k){return db.progress[k];}).filter(function(p){return p.courseId===courseId;})); };
   DATA.listUsers=function(){ return Promise.resolve(Object.keys(db.users).map(function(k){var u=db.users[k];return {uid:u.uid,email:u.email,name:u.name,role:u.role,createdAt:u.createdAt};})); };
+  DATA.setUserRole=function(uid,role){ if(db.users[uid]){ db.users[uid].role=role; mockSave(db); } return Promise.resolve(); };
+  DATA.setUserName=function(uid,name){ if(db.users[uid]){ db.users[uid].name=name; mockSave(db); } return Promise.resolve(); };
 }
 /* ============ AUTH SCREEN ============ */
 var ME=null, AUTH_MODE='in';
@@ -386,7 +390,7 @@ function renderAuth(){
     else { btn.textContent='Signing in...'; DATA.signIn(email,pass).catch(function(e2){ err.textContent=e2.message||'Could not sign in.'; btn.textContent='Sign in'; }); }
   }
   btn.onclick=submit; pwI.addEventListener('keydown',function(ev){ if(ev.key==='Enter') submit(); });
-  setTimeout(function(){ (isUp?$('#auName'):emI).focus(); },60);
+  setTimeout(function(){ var el=(isUp?$('#auName'):emI); if(el&&document.body.contains(el)) el.focus(); },60);
 }
 
 /* ============ SHELL + ROUTER ============ */
@@ -432,6 +436,8 @@ function pctDone(prog,total){ if(!total) return 0; var n=0,comp=(prog&&prog.comp
 function countDone(prog){ var n=0,comp=(prog&&prog.completed)||{}; for(var k in comp){ if(comp[k]) n++; } return n; }
 
 /* ============ LEARNER: DASHBOARD ============ */
+function canSeeCourse(co){ if(ME&&ME.role==='admin') return true; if((co.audience||'all')!=='assigned') return true; var em=((ME&&ME.email)||'').toLowerCase(); return (co.assignedTo||[]).indexOf(em)>=0; }
+function assignedToMe(co){ if((co.audience||'all')!=='assigned') return false; var em=((ME&&ME.email)||'').toLowerCase(); return (co.assignedTo||[]).indexOf(em)>=0; }
 function viewDash(c){
   var page=e('div',{class:'page'});
   var hr=new Date().getHours(); var greet=hr<12?'Good morning':hr<18?'Good afternoon':'Good evening';
@@ -441,6 +447,8 @@ function viewDash(c){
   grid.appendChild(e('div',{class:'empty',html:svg('layers')+'<p>Loading courses...</p>'}));
   c.appendChild(page);
   DATA.listCourses(true).then(function(courses){
+    courses=courses.filter(canSeeCourse);
+    courses.sort(function(a,b){ return (assignedToMe(b)?1:0)-(assignedToMe(a)?1:0) || (a.order||0)-(b.order||0); });
     grid.innerHTML='';
     if(!courses.length){ grid.appendChild(e('div',{class:'empty',html:svg('layers')+'<h3>No courses yet</h3>'+(ME.role==='admin'?'<p>Head to the Console to build your first course.</p>':'<p>Check back soon. Training is on the way.</p>')})); return; }
     var pending=courses.length;
@@ -448,7 +456,7 @@ function viewDash(c){
       DATA.getProgress(ME.uid,co.id).then(function(prog){
         var total=courseLessons(co).length; var pc=pctDone(prog,total);
         var card=e('div',{class:'ccard'});
-        var top=e('div',{class:'top'}); top.style.background=coverFor(co); top.innerHTML='<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.28))"></div><h3>'+esc(co.title)+'</h3>'+(pc===100?'<div class="badge">Complete</div>':'');
+        var top=e('div',{class:'top'}); top.style.background=coverFor(co); top.innerHTML='<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.28))"></div><h3>'+esc(co.title)+'</h3>'+(pc===100?'<div class="badge">Complete</div>':(assignedToMe(co)?'<div class="badge">Assigned</div>':''));
         var body=e('div',{class:'body'}); body.innerHTML='<p>'+esc(co.description||'')+'</p><div class="stat">'+svg('layers','width=14 height=14')+(co.chapters||[]).length+' chapters &middot; '+total+' lessons</div><div class="pbar'+(pc===100?' done':'')+'"><i style="width:'+pc+'%"></i></div><div style="display:flex;justify-content:space-between;margin-top:7px"><span class="pct">'+pc+'% complete</span><span style="font-size:12.5px;color:var(--muted)">'+countDone(prog)+'/'+total+'</span></div>';
         card.appendChild(top); card.appendChild(body); card.onclick=function(){ go('course',{courseId:co.id}); };
         grid.appendChild(card);
@@ -465,6 +473,7 @@ function viewCourse(c){
   $('#bkDash').onclick=function(){ go('dash'); };
   Promise.all([DATA.getCourse(CTX.courseId),DATA.getProgress(ME.uid,CTX.courseId)]).then(function(r){
     var co=r[0], prog=r[1]; if(!co){ host.innerHTML=''; host.appendChild(e('div',{class:'empty',html:svg('alert')+'<h3>Course not found</h3>'})); return; }
+    if(!canSeeCourse(co)){ toast('That course is not assigned to you.',true); go('dash'); return; }
     CTX.course=co; CTX.prog=prog;
     var total=courseLessons(co).length, pc=pctDone(prog,total);
     var head=e('div',{class:'course-head'});
@@ -638,6 +647,34 @@ function viewBuilder(c){
     pubRow.appendChild(psw); pubRow.appendChild(e('div',{class:'grow',html:'<b>Published</b><div class="sub">When on, learners see this course in My Learning.</div>'}));
     var preview=e('button',{class:'btn btn-ghost btn-sm',html:svg('play')+'Preview as learner'}); preview.onclick=function(){ go('course',{courseId:co.id}); }; pubRow.appendChild(preview);
     host.appendChild(pubRow);
+    // audience row
+    var audRow=e('div',{class:'list-row',style:'margin-top:10px;flex-wrap:wrap'});
+    var audSel=e('select',{style:'max-width:260px'}); audSel.innerHTML='<option value="all">Everyone at Partners</option><option value="assigned">Assigned people only</option>'; audSel.value=co.audience||'all';
+    var audGrow=e('div',{class:'grow',html:'<b>Audience</b><div class="sub">Who sees this course in My Learning.</div>'});
+    audRow.appendChild(audGrow); audRow.appendChild(audSel);
+    var pickHost=e('div',{style:'flex-basis:100%;display:'+((co.audience||'all')==='assigned'?'block':'none')+';margin-top:10px'});
+    audRow.appendChild(pickHost);
+    function drawPicker(){
+      pickHost.innerHTML='<div class="sub" style="margin-bottom:8px">Loading registrants...</div>';
+      DATA.listUsers().then(function(users){
+        pickHost.innerHTML='';
+        var list=e('div',{style:'display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px'});
+        var cur=(co.assignedTo||[]).slice();
+        users.sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); }).forEach(function(u){
+          var em=(u.email||'').toLowerCase(); if(!em) return;
+          var lab=e('label',{style:'display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;cursor:pointer;background:var(--card)'});
+          var cb=e('input',{type:'checkbox'}); cb.checked=cur.indexOf(em)>=0;
+          cb.onchange=function(){ var i=cur.indexOf(em); if(cb.checked&&i<0) cur.push(em); if(!cb.checked&&i>=0) cur.splice(i,1); co.assignedTo=cur.slice(); save(); };
+          lab.appendChild(cb); lab.appendChild(e('span',{html:esc(u.name||em)+' <span style="color:var(--muted)">'+esc(em)+'</span>'}));
+          list.appendChild(lab);
+        });
+        if(!list.children.length) pickHost.appendChild(e('div',{class:'sub',text:'No registrants yet. People appear here after they create an account.'}));
+        else pickHost.appendChild(list);
+      });
+    }
+    audSel.onchange=function(){ co.audience=audSel.value; if(co.audience==='assigned'){ co.assignedTo=co.assignedTo||[]; pickHost.style.display='block'; drawPicker(); } else { pickHost.style.display='none'; } save(co.audience==='assigned'?'Course limited to assigned people':'Course open to everyone'); };
+    if((co.audience||'all')==='assigned') drawPicker();
+    host.appendChild(audRow);
   });
 }
 function lessonModal(co,chap,lesson){
@@ -682,8 +719,35 @@ function admPeople(host){
     function drawOverview(){
       tblHost.innerHTML='';
       if(!users.length){ tblHost.appendChild(e('div',{class:'empty',html:svg('users')+'<h3>No registrants yet</h3><p>People appear here once they create an account.</p>'})); return; }
-      var t=e('table',{class:'tbl'}); t.innerHTML='<thead><tr><th>Name</th><th>Email</th><th>Role</th><th class="mini">Joined</th></tr></thead>';
-      var tb=e('tbody'); users.forEach(function(u){ var tr=e('tr'); tr.innerHTML='<td><b>'+esc(u.name||'')+'</b></td><td>'+esc(u.email||'')+'</td><td>'+esc(u.role||'learner')+'</td><td>'+(u.createdAt?new Date(u.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'')+'</td>'; tb.appendChild(tr); }); t.appendChild(tb); tblHost.appendChild(t);
+      var t=e('table',{class:'tbl'}); t.innerHTML='<thead><tr><th>Name</th><th>Email</th><th>Role</th><th class="mini">Joined</th><th>Manage</th></tr></thead>';
+      var tb=e('tbody');
+      users.forEach(function(u){
+        var tr=e('tr');
+        tr.innerHTML='<td><b>'+esc(u.name||'')+'</b></td><td>'+esc(u.email||'')+'</td><td>'+((u.role==='admin')?'<span style="color:var(--teal);font-weight:700">admin</span>':'learner')+'</td><td>'+(u.createdAt?new Date(u.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'')+'</td>';
+        var td=e('td',{style:'white-space:nowrap'});
+        var isOwner=ADMIN_EMAILS.indexOf((u.email||'').toLowerCase())>=0;
+        var isMe=!!(ME&&u.uid===ME.uid);
+        if(isOwner){ td.appendChild(e('span',{style:'font-size:12px;color:var(--muted);font-weight:600;margin-right:8px',text:'Owner'})); }
+        else if(isMe){ td.appendChild(e('span',{style:'font-size:12px;color:var(--muted);font-weight:600;margin-right:8px',text:'You'})); }
+        else {
+          var rb=e('button',{class:'btn btn-ghost btn-sm',text:(u.role==='admin'?'Remove admin':'Make admin')});
+          rb.onclick=function(){
+            var nr=(u.role==='admin')?'learner':'admin';
+            DATA.setUserRole(u.uid,nr).then(function(){ u.role=nr; drawOverview(); toast(nr==='admin'?((u.name||u.email)+' is now an admin. It applies the next time they open the Academy.'):((u.name||u.email)+' is back to learner.')); }).catch(function(er){ toast(er.message||'Could not update role.',true); });
+          };
+          td.appendChild(rb);
+        }
+        var nb=e('button',{class:'icon-btn',title:'Edit name',html:svg('edit')});
+        nb.onclick=function(){
+          var body=e('div'); var f=e('div',{class:'field'}); f.innerHTML='<label>Name</label>'; var inp=e('input',{type:'text',value:u.name||''}); f.appendChild(inp); body.appendChild(f);
+          var foot=e('div',{class:'modal-foot'}); var sv=e('button',{class:'btn btn-primary',text:'Save'});
+          sv.onclick=function(){ var nv=(inp.value||'').trim(); if(!nv){ toast('Name cannot be empty.',true); return; } DATA.setUserName(u.uid,nv).then(function(){ u.name=nv; closeModal(); drawOverview(); toast('Name updated.'); }).catch(function(er){ toast(er.message||'Could not update.',true); }); };
+          foot.appendChild(sv); modal('Edit profile',body,foot);
+        };
+        td.appendChild(nb);
+        tr.appendChild(td); tb.appendChild(tr);
+      });
+      t.appendChild(tb); tblHost.appendChild(t);
     }
     function drawCourse(courseId){
       tblHost.innerHTML=''; var co=null; courses.forEach(function(x){ if(x.id===courseId) co=x; }); if(!co) return;
@@ -703,8 +767,8 @@ function admPeople(host){
   });
 }
 
-/* ============ BOOT (build 2026-07-14-3) ============ */
-try{ console.log('Partners Playbook Academy build 2026-07-14-3'); }catch(e){}
+/* ============ BOOT (build 2026-07-14-5) ============ */
+try{ console.log('Partners Playbook Academy build 2026-07-14-5'); }catch(e){}
 function _clearSplash(){ try{ var boot=$('#boot'); if(boot) boot.classList.add('hide'); }catch(e){} }
 function _ensureData(){ if(!(window.DATA&&DATA.onAuth)){ try{ MODE='mock'; mockData(); }catch(e){} } }
 function _showLogin(){ _clearSplash(); _ensureData(); try{ if(!ME){ $('#auth').classList.remove('hide'); if(DATA&&DATA.onAuth){ DATA.onAuth(onAuthChanged); } else { renderAuth(); } } }catch(e){ try{ renderAuth(); }catch(e2){} } }
