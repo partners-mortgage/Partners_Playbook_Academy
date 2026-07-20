@@ -54,6 +54,11 @@ a{color:var(--teal);text-decoration:none}
 #sidebar{width:250px;flex:0 0 250px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
 .side-brand{display:flex;align-items:center;gap:11px;padding:20px 20px 16px}
 .side-brand img{width:36px;height:36px;border-radius:9px;box-shadow:var(--shadow-sm)}
+.step.selon{outline:2px solid var(--gold);outline-offset:3px;border-radius:14px}
+#bulkbar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:900;background:var(--ink);color:#fff;border-radius:999px;padding:10px 16px;display:flex;gap:12px;align-items:center;box-shadow:var(--shadow-lg);font-size:13.5px}
+#bulkbar button{border:0;cursor:pointer;border-radius:999px;padding:7px 14px;font-weight:700;font-size:13px;font-family:inherit}
+#bulkbar .bb-del{background:#e05252;color:#fff}
+#bulkbar .bb-clear{background:rgba(255,255,255,.14);color:#fff}
 .side-brand .wm{line-height:1}
 .side-brand .wm b{font-family:'Barlow Condensed';font-weight:800;font-size:19px;letter-spacing:.02em;text-transform:uppercase;display:block;color:var(--ink)}
 .side-brand .wm span{font-family:'Barlow Condensed';font-weight:600;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--teal)}
@@ -641,13 +646,15 @@ function downscaleImg(img){ var maxW=1600; var w=img.naturalWidth||img.width, h=
 
 /* ---- screen recording ---- */
 var REC={ stream:null, video:null, imageCapture:null, guide:null, count:0, keyHandler:null, mode:'auto', autoTimer:null, keptHash:null, prevHash:null, lastCaptureAt:0 };
-var AUTO_SAMPLE_MS=600, AUTO_CHANGE_THRESH=8, AUTO_STABLE_THRESH=3, AUTO_MIN_GAP=1400, AUTO_MAX=80;
-function startRecording(){
+var AUTO_SAMPLE_MS=350, AUTO_CHANGE_THRESH=5, AUTO_STABLE_THRESH=3, AUTO_MIN_GAP=700, AUTO_MAX=200;
+function startRecording(appendId){
   if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){ toast('Screen capture needs a secure (https) page and a modern browser. Try Upload instead.',true); return; }
   navigator.mediaDevices.getDisplayMedia({ video:{ frameRate:6 }, audio:false }).then(function(stream){
     REC.stream=stream;
     var v=document.createElement('video'); v.autoplay=true; v.muted=true; v.playsInline=true; v.srcObject=stream; v.style.position='fixed'; v.style.left='-99999px'; document.body.appendChild(v); REC.video=v;
-    var g=newGuideObj(); REC.guide=g; REC.count=0; DB.guides.push(g); saveDB();
+    var g=appendId?getGuide(appendId):null; REC.append=!!g; REC.createdNew=!g;
+    if(!g){ g=newGuideObj(); DB.guides.push(g); }
+    REC.guide=g; REC.count=0; saveDB();
     REC.mode='auto'; REC.keptHash=null; REC.prevHash=null; REC.lastCaptureAt=0;
     var vtrack=stream.getVideoTracks()[0];
     vtrack.addEventListener('ended',function(){ finishRecording(); });
@@ -656,14 +663,14 @@ function startRecording(){
     REC.keyHandler=function(ev){ if(ev.code==='Space'||ev.code==='Enter'){ if(document.activeElement&&/INPUT|TEXTAREA/.test(document.activeElement.tagName)) return; ev.preventDefault(); captureStep(); } };
     window.addEventListener('keydown',REC.keyHandler);
     REC.autoTimer=setTimeout(autoTick,500);
-    toast('Recording in auto mode. Go use the shared tab or window normally, a step is captured on each change. The bar stays here; press Capture any time.');
-  }).catch(function(){ toast('Screen share was cancelled.',true); var g=REC.guide; if(g){ DB.guides=DB.guides.filter(function(x){return x.id!==g.id;}); saveDB(); REC.guide=null; } });
+    toast('Recording. Every visible change on the shared screen becomes a step. Extra captures are easy to remove: Undo on the bar, or Select and delete in the editor.');
+  }).catch(function(){ toast('Screen share was cancelled.',true); var g=REC.guide; if(g&&REC.createdNew){ DB.guides=DB.guides.filter(function(x){return x.id!==g.id;}); saveDB(); } REC.guide=null; REC.append=false; });
 }
 function showCapBar(){
   var bar=e('div',{id:'capbar'});
-  bar.innerHTML='<div class="rec"><span class="d"></span>Recording</div><canvas id="capPrev" width="72" height="45" style="border-radius:6px;background:#000;border:1px solid #3a484b;flex:0 0 72px"></canvas><div class="cnt" id="capCnt">0 steps</div><label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#e8eef0;font-weight:600;cursor:pointer"><span class="sw on" id="autoSw"></span>Auto</label><button class="capture" id="capBtn">'+svg('camera')+'Capture</button><button class="fin" id="finBtn">Finish</button>';
+  bar.innerHTML='<div class="rec"><span class="d"></span>Recording</div><canvas id="capPrev" width="72" height="45" style="border-radius:6px;background:#000;border:1px solid #3a484b;flex:0 0 72px"></canvas><div class="cnt" id="capCnt">0 steps</div><label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#e8eef0;font-weight:600;cursor:pointer"><span class="sw on" id="autoSw"></span>Auto</label><button class="capture" id="capBtn">'+svg('camera')+'Capture</button><button class="capture" id="undoBtn" title="Remove the last captured step">Undo</button><button class="fin" id="finBtn">Finish</button>';
   document.body.appendChild(bar); document.body.appendChild(e('div',{id:'capflash'}));
-  $('#capBtn').onclick=function(){ captureStep(); }; $('#finBtn').onclick=finishRecording;
+  $('#capBtn').onclick=function(){ captureStep(); }; $('#undoBtn').onclick=undoLastCapture; $('#finBtn').onclick=finishRecording;
   var asw=$('#autoSw'); if(asw) asw.onclick=function(){ REC.mode=(REC.mode==='auto')?'manual':'auto'; asw.classList.toggle('on',REC.mode==='auto'); if(REC.mode==='auto'){ REC.prevHash=null; toast('Auto-capture on. Click through and steps capture on each change.'); } else { toast('Manual mode. Press Capture (or Space) for each step.'); } };
 }
 function captureStep(auto){
@@ -682,7 +689,11 @@ function finishRecording(){
   if(REC.video){ REC.video.remove(); }
   var bar=$('#capbar'); if(bar) bar.remove(); var fl=$('#capflash'); if(fl) fl.remove();
   var g=REC.guide; REC.stream=REC.video=null; REC.imageCapture=null;
-  if(g){ if(!g.steps.length){ DB.guides=DB.guides.filter(function(x){return x.id!==g.id;}); saveDB(); REC.guide=null; toast('No steps captured. Try again and share the tab or window you want to document, or use Upload to add screenshots.',true); go('home'); return; } saveDB(); REC.guide=null; editGuide(g.id); toast('Captured '+stepCount(g)+' steps. Add titles and clean up as needed.'); }
+  if(g){
+    if(REC.append){ REC.append=false; saveDB(); REC.guide=null; editGuide(g.id); toast(REC.count?('Added '+REC.count+' new step'+(REC.count===1?'':'s')+'. Prune any extras below.'):'No new steps captured.'); return; }
+    if(!g.steps.length){ DB.guides=DB.guides.filter(function(x){return x.id!==g.id;}); saveDB(); REC.guide=null; toast('No steps captured. Try again and share the tab or window you want to document, or use Upload to add screenshots.',true); go('home'); return; }
+    saveDB(); REC.guide=null; editGuide(g.id); toast('Captured '+stepCount(g)+' steps. Prune extras and add titles.');
+  }
 }
 
 function sampleHash(v){ var c=document.createElement('canvas'); c.width=32; c.height=20; var x=c.getContext('2d'); x.drawImage(v,0,0,32,20); var d=x.getImageData(0,0,32,20).data; var a=new Array(640); for(var i=0,j=0;i<d.length;i+=4,j++){ a[j]=d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114; } return a; }
@@ -699,6 +710,7 @@ function hashFromCanvas(c){ var t=document.createElement('canvas'); t.width=32; 
 function canvasToJpeg(c){ var mx=1600, w=c.width, h=c.height; if(w>mx){ var c2=document.createElement('canvas'); h=Math.round(h*mx/w); w=mx; c2.width=w; c2.height=h; c2.getContext('2d').drawImage(c,0,0,w,h); return c2.toDataURL('image/jpeg',0.82); } return c.toDataURL('image/jpeg',0.82); }
 function drawPreview(c){ var p=$('#capPrev'); if(p&&c){ try{ p.getContext('2d').drawImage(c,0,0,p.width,p.height); }catch(e){} } }
 function commitFrame(c,h){ var scaled=canvasToJpeg(c); REC.guide.steps.push(newStep('step','',scaled)); REC.count++; REC.guide.updatedAt=Date.now(); saveDB(); REC.keptHash=h; REC.prevHash=h; REC.lastCaptureAt=Date.now(); var cnt=$('#capCnt'); if(cnt) cnt.textContent=REC.count+' step'+(REC.count>1?'s':''); var f=$('#capflash'); if(f){ f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); } }
+function undoLastCapture(){ var g=REC.guide; if(!g||!g.steps.length||!REC.count){ toast('Nothing captured yet this session.',true); return; } g.steps.pop(); REC.count=Math.max(0,REC.count-1); g.updatedAt=Date.now(); saveDB(); var cnt=$('#capCnt'); if(cnt) cnt.textContent=REC.count+' step'+(REC.count===1?'':'s'); grabFullFrame().then(function(c){ if(c) REC.keptHash=hashFromCanvas(c); }).catch(function(){}); toast('Removed the last capture.'); }
 function autoTick(){
   if(!REC.stream){ return; }
   var reschedule=function(){ if(REC.stream) REC.autoTimer=setTimeout(autoTick,AUTO_SAMPLE_MS); };
@@ -710,15 +722,15 @@ function autoTick(){
     if(isBlankFrame(h)){ return; }
     if(REC.keptHash===null){ commitFrame(c,h); return; }
     if(REC.count>=AUTO_MAX){ REC.mode='manual'; var asw=$('#autoSw'); if(asw) asw.classList.remove('on'); toast('Reached '+AUTO_MAX+' auto steps. Switched to manual, press Capture for more.'); return; }
-    var dPrev=hashDiff(h,REC.prevHash), dKept=hashDiff(h,REC.keptHash), now=Date.now();
+    var dKept=hashDiff(h,REC.keptHash), now=Date.now();
     REC.prevHash=h;
-    if(dKept>AUTO_CHANGE_THRESH && dPrev<AUTO_STABLE_THRESH && (now-REC.lastCaptureAt)>AUTO_MIN_GAP){ commitFrame(c,h); }
+    if(dKept>AUTO_CHANGE_THRESH && (now-REC.lastCaptureAt)>AUTO_MIN_GAP){ commitFrame(c,h); }
   }).catch(function(){}).then(reschedule);
 }
 
 /* ---- editor ---- */
 function editGuide(id){ CTX.editId=id; go('editor'); }
-function openGuide(id){ CTX.viewId=id; go('viewer'); }
+function openGuide(id){ SEL=[]; var bb=$('#bulkbar'); if(bb) bb.remove(); CTX.viewId=id; go('viewer'); }
 var SAVE_T=null;
 function scheduleSave(){ if(SAVE_T) clearTimeout(SAVE_T); SAVE_T=setTimeout(function(){ var g=getGuide(CTX.editId); if(g) g.updatedAt=Date.now(); saveDB(); },500); }
 function viewEditor(){
@@ -729,8 +741,9 @@ function viewEditor(){
   var pv=e('button',{class:'btn btn-ghost btn-sm',html:svg('eye')+'Preview'}); pv.onclick=function(){ openGuide(g.id); };
   var sh=e('button',{class:'btn btn-soft btn-sm',html:svg('share')+'Share'}); sh.onclick=function(){ openShare(g.id,'guide'); };
   var dn=e('button',{class:'btn btn-primary btn-sm',html:svg('check')+'Done'}); dn.onclick=function(){ openGuide(g.id); };
-  top.appendChild(pv); top.appendChild(sh); top.appendChild(dn);
-  top.querySelector('[data-a=back]').onclick=function(){ go('guides'); };
+  var rm=e('button',{class:'btn btn-soft btn-sm',html:svg('camera')+'Record more'}); rm.onclick=function(){ startRecording(g.id); };
+  top.appendChild(rm); top.appendChild(pv); top.appendChild(sh); top.appendChild(dn);
+  top.querySelector('[data-a=back]').onclick=function(){ SEL=[]; var bb=$('#bulkbar'); if(bb) bb.remove(); go('guides'); };
   wrap.appendChild(top);
   var row=e('div',{class:'editor-wrap'});
   var main=e('div',{class:'editor-main'});
@@ -750,6 +763,7 @@ function viewEditor(){
   return wrap;
 }
 function renderSteps(host,g){
+  SEL=SEL.filter(function(id){ return g.steps.some(function(x){return x.id===id;}); }); drawBulkBar(g);
   host.innerHTML=''; var num=0;
   g.steps.forEach(function(st,idx){ host.appendChild(insertBar(g,idx)); if(st.kind==='step'){ num++; host.appendChild(stepCard(g,st,idx,num)); } else host.appendChild(calloutCard(g,st,idx)); });
   host.appendChild(insertBar(g,g.steps.length));
@@ -764,8 +778,11 @@ function insertBar(g,idx){
   $all('button',bar).forEach(function(b){ b.onclick=function(){ var k=b.getAttribute('data-k'); g.steps.splice(idx,0,newStep(k,'')); persistSteps(g); }; });
   return bar;
 }
+var SEL=[];
+function selToggle(g,st,card){ var i=SEL.indexOf(st.id); if(i>=0){ SEL.splice(i,1); card.classList.remove('selon'); } else { SEL.push(st.id); card.classList.add('selon'); } drawBulkBar(g); }
+function drawBulkBar(g){ var b=$('#bulkbar'); if(!SEL.length){ if(b) b.remove(); return; } if(!b){ b=e('div',{id:'bulkbar'}); document.body.appendChild(b); } b.innerHTML=''; b.appendChild(e('span',{text:SEL.length+' selected'})); var dl=e('button',{class:'bb-del',text:'Delete selected'}); dl.onclick=function(){ g.steps=g.steps.filter(function(x){ return SEL.indexOf(x.id)<0; }); SEL=[]; drawBulkBar(g); persistSteps(g); toast('Deleted. '+stepCount(g)+' steps remain.'); }; var cl=e('button',{class:'bb-clear',text:'Clear'}); cl.onclick=function(){ SEL=[]; drawBulkBar(g); var host=$('#stepsHost'); if(host) renderSteps(host,g); }; b.appendChild(dl); b.appendChild(cl); }
 function stepCard(g,st,idx,num){
-  var card=e('div',{class:'step'}); card.appendChild(sideControls(g,idx));
+  var card=e('div',{class:'step'}); if(SEL.indexOf(st.id)>=0) card.classList.add('selon'); card.appendChild(sideControls(g,idx));
   card.appendChild(e('div',{class:'num',text:String(num)}));
   var body=e('div',{class:'sc-body'});
   var txt=e('div',{class:'stext'+(st.text?'':' empty'),contenteditable:'true','data-ph':'Describe this step (e.g. "Click the New Loan button")',text:st.text});
@@ -774,6 +791,7 @@ function stepCard(g,st,idx,num){
   if(st.image){ body.appendChild(shotEl(g,st)); }
   else { var add=e('div',{class:'add-shot',html:svg('camera')+'Add a screenshot'}); add.onclick=function(){ addShotToStep(g,st); }; body.appendChild(add); }
   var tools=e('div',{class:'step-tools'});
+  tools.appendChild(toolBtn('check','Select',function(){ selToggle(g,st,card); }));
   tools.appendChild(toolBtn('camera',st.image?'Replace image':'Add image',function(){ addShotToStep(g,st); }));
   if(st.image) tools.appendChild(toolBtn('edit','Annotate',function(){ openShotEditor(g,st); }));
   if(st.image) tools.appendChild(toolBtn('sparkle','Describe (AI)',function(){ magicEditStep(g,st); }));
