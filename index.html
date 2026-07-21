@@ -239,7 +239,7 @@ a{color:var(--teal);text-decoration:none}
 </head>
 <body>
 <div id="boot"><div class="bootcard"><img id="bootLogo" alt="Partners"><div class="spin"></div></div></div>
-<div id="buildTag">build 2026-07-14-6</div>
+<div id="buildTag">build 2026-07-14-7</div>
 <div id="auth"><div class="authcard"><div class="brand"><h1>Partners Playbook</h1><div class="sub">Academy</div></div><div><div class="field"><label>Work email</label><input type="email" id="auEmail" placeholder="you@partnersmortgage.com" autocomplete="username"></div><div class="field"><label>Password</label><input type="password" id="auPass" placeholder="Your password" autocomplete="current-password"></div><div class="err" id="auErr"></div><button class="btn btn-primary btn-lg" onclick="try{DATA.signIn(document.getElementById('auEmail').value.trim(),document.getElementById('auPass').value).catch(function(e2){document.getElementById('auErr').textContent=e2.message||'Could not sign in.';});}catch(e){}">Sign in</button><div class="ym">You matter.</div></div></div></div>
 <div id="app" class="hide">
   <div class="topbar">
@@ -315,7 +315,7 @@ function dataInit(){
 }
 /* ---- Firebase implementation ---- */
 function fbData(){
-  DATA.onAuth=function(cb){ FB._unsub=FB.auth.onAuthStateChanged(function(u){ if(!u){ cb(null); return; } FB.fs.collection('users').doc(u.uid).get().then(function(d){ var rec=d.exists?d.data():{}; var role=(ADMIN_EMAILS.indexOf((u.email||'').toLowerCase())>=0)?'admin':(rec.role||'learner'); cb({uid:u.uid,email:u.email,name:rec.name||u.displayName||(u.email||'').split('@')[0],role:role}); }).catch(function(){ cb({uid:u.uid,email:u.email,name:(u.email||'').split('@')[0],role:(ADMIN_EMAILS.indexOf((u.email||'').toLowerCase())>=0)?'admin':'learner'}); }); }); };
+  DATA.onAuth=function(cb){ FB._unsub=FB.auth.onAuthStateChanged(function(u){ if(!u||u.isAnonymous){ cb(null); return; } FB.fs.collection('users').doc(u.uid).get().then(function(d){ var rec=d.exists?d.data():{}; var role=(ADMIN_EMAILS.indexOf((u.email||'').toLowerCase())>=0)?'admin':(rec.role||'learner'); cb({uid:u.uid,email:u.email,name:rec.name||u.displayName||(u.email||'').split('@')[0],role:role}); }).catch(function(){ cb({uid:u.uid,email:u.email,name:(u.email||'').split('@')[0],role:(ADMIN_EMAILS.indexOf((u.email||'').toLowerCase())>=0)?'admin':'learner'}); }); }); };
   DATA.signUp=function(email,pass,name){ return FB.auth.createUserWithEmailAndPassword(email,pass).then(function(cred){ var role=(ADMIN_EMAILS.indexOf(email.toLowerCase())>=0)?'admin':'learner'; return FB.fs.collection('users').doc(cred.user.uid).set({email:email,name:name,role:role,createdAt:Date.now()}); }); };
   DATA.signIn=function(email,pass){ return FB.auth.signInWithEmailAndPassword(email,pass); };
   DATA.signOut=function(){ return FB.auth.signOut(); };
@@ -775,8 +775,8 @@ function admPeople(host){
   });
 }
 
-/* ============ BOOT (build 2026-07-14-6) ============ */
-try{ console.log('Partners Playbook Academy build 2026-07-14-6'); }catch(e){}
+/* ============ BOOT (build 2026-07-14-7) ============ */
+try{ console.log('Partners Playbook Academy build 2026-07-14-7'); }catch(e){}
 function _clearSplash(){ try{ var boot=$('#boot'); if(boot) boot.classList.add('hide'); }catch(e){} }
 function _ensureData(){ if(!(window.DATA&&DATA.onAuth)){ try{ MODE='mock'; mockData(); }catch(e){} } }
 function _showLogin(){ _clearSplash(); _ensureData(); try{ if(!ME){ $('#auth').classList.remove('hide'); if(DATA&&DATA.onAuth){ DATA.onAuth(onAuthChanged); } else { renderAuth(); } } }catch(e){ try{ renderAuth(); }catch(e2){} } }

@@ -1183,12 +1183,21 @@ function initFirebase(cfg,silent){
     LS.setItem(FB_KEY,JSON.stringify(cfg)); LS.removeItem(CLOUD_OFF_KEY);
     var proceed=function(){ CLOUD.ready=true; cloudAttach(); cloudPushDirty(); if(!silent) toast('Cloud sync connected'); render(); };
     if(firebase.auth){
-      firebase.auth().signInAnonymously().then(function(){ proceed(); }).catch(function(err){
-        CLOUD.ready=false;
-        var code=(err&&err.code)||''; var msg=(err&&err.message)||'sign-in failed';
-        if(code.indexOf('operation-not-allowed')>=0) msg='Enable Anonymous sign-in: Firebase console, Build, Authentication, Sign-in method, Anonymous, Enable.';
-        if(!silent) toast('Cloud sign-in failed. '+msg,true); render();
+      var au=firebase.auth(); var decided=false; var un=null;
+      var anonFallback=function(){
+        au.signInAnonymously().then(function(){ proceed(); }).catch(function(err){
+          CLOUD.ready=false;
+          var code=(err&&err.code)||''; var msg=(err&&err.message)||'sign-in failed';
+          if(code.indexOf('operation-not-allowed')>=0) msg='Enable Anonymous sign-in: Firebase console, Build, Authentication, Sign-in method, Anonymous, Enable.';
+          if(!silent) toast('Cloud sign-in failed. '+msg,true); render();
+        });
+      };
+      un=au.onAuthStateChanged(function(u){
+        if(decided) return; decided=true; try{ if(un) un(); }catch(e){}
+        /* Reuse any existing sign-in (e.g. an Academy admin session). Never replace it: signing in anonymously here would sign the person out of the Academy, since one browser holds one session per Firebase project. */
+        if(u){ proceed(); } else { anonFallback(); }
       });
+      setTimeout(function(){ if(!decided){ decided=true; anonFallback(); } },2500);
     } else { proceed(); }
   }catch(err){ CLOUD.ready=false; if(!silent) toast('Could not connect: '+err.message,true); }
 }
