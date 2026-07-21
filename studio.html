@@ -346,7 +346,7 @@ a{color:var(--teal);text-decoration:none}
     <div class="side-new"><button class="btn btn-primary" id="sideNew">&#43; New guide</button></div>
     <nav class="nav" id="nav"></nav>
     <div class="side-foot">
-      <div style="margin-bottom:10px"><a href="index.html" style="color:var(--teal);font-weight:700;text-decoration:none;font-size:13px">&larr; Partners Academy</a><a href="#" style="color:var(--muted);font-weight:600;text-decoration:none;font-size:12px;margin-left:12px" onclick="try{(window.LS||localStorage).removeItem('pm_playbook_pin_ok');}catch(e){} location.reload(); return false;">Lock Studio</a></div><div style="margin-bottom:10px;font-size:11.5px;color:var(--muted)">Lesson videos are added in the Academy console, inside each course.</div>
+      <div id="xlinks" style="margin-bottom:10px"><a href="index.html" style="color:var(--teal);font-weight:700;text-decoration:none;font-size:13px">&larr; Partners Academy</a><a href="#" style="color:var(--muted);font-weight:600;text-decoration:none;font-size:12px;margin-left:12px" onclick="try{(window.LS||localStorage).removeItem('pm_playbook_pin_ok');}catch(e){} location.reload(); return false;">Lock Studio</a></div><div id="xnote" style="margin-bottom:10px;font-size:11.5px;color:var(--muted)">Lesson videos are added in the Academy console, inside each course.</div>
       <div class="ym">You matter.</div>
       <div style="margin-top:6px">1687 Eureka Rd, Ste 100<br>Roseville, CA 95661</div>
     </div>
@@ -1350,6 +1350,9 @@ function parseCfg(txt){
 
 
 initLock();
+
+var EMBED=/[?&]embed=1/.test(location.search);
+if(EMBED){ document.addEventListener('DOMContentLoaded',function(){ var a=document.getElementById('xlinks'); if(a) a.style.display='none'; }); var _xl=document.getElementById('xlinks'); if(_xl) _xl.style.display='none'; var _xn=document.getElementById('xnote'); if(_xn) _xn.style.display='none'; }
 </script>
 </body>
 </html>

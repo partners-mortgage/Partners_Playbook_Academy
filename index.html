@@ -239,7 +239,7 @@ a{color:var(--teal);text-decoration:none}
 </head>
 <body>
 <div id="boot"><div class="bootcard"><img id="bootLogo" alt="Partners"><div class="spin"></div></div></div>
-<div id="buildTag">build 2026-07-14-5</div>
+<div id="buildTag">build 2026-07-14-6</div>
 <div id="auth"><div class="authcard"><div class="brand"><h1>Partners Playbook</h1><div class="sub">Academy</div></div><div><div class="field"><label>Work email</label><input type="email" id="auEmail" placeholder="you@partnersmortgage.com" autocomplete="username"></div><div class="field"><label>Password</label><input type="password" id="auPass" placeholder="Your password" autocomplete="current-password"></div><div class="err" id="auErr"></div><button class="btn btn-primary btn-lg" onclick="try{DATA.signIn(document.getElementById('auEmail').value.trim(),document.getElementById('auPass').value).catch(function(e2){document.getElementById('auErr').textContent=e2.message||'Could not sign in.';});}catch(e){}">Sign in</button><div class="ym">You matter.</div></div></div></div>
 <div id="app" class="hide">
   <div class="topbar">
@@ -409,6 +409,7 @@ function renderTabs(){
   var t=$('#tabs'); t.innerHTML='';
   var tabs=[{v:'dash',l:'My Learning',ic:'grid'}];
   if(ME.role==='admin') tabs.push({v:'admin',l:'Console',ic:'edit'});
+  if(ME.role==='admin') tabs.push({v:'studio',l:'Studio',ic:'book'});
   tabs.forEach(function(tb){ var on=(VIEW===tb.v)||(tb.v==='dash'&&(VIEW==='course'||VIEW==='lesson'))||(tb.v==='admin'&&(VIEW==='admin'||VIEW==='builder')); var b=e('button',{class:on?'on':'',html:tb.l}); b.onclick=function(){ go(tb.v); }; t.appendChild(b); });
 }
 function renderWho(){
@@ -427,6 +428,13 @@ function render(){
   else if(VIEW==='lesson') viewLesson(c);
   else if(VIEW==='admin') viewAdmin(c);
   else if(VIEW==='builder') viewBuilder(c);
+  else if(VIEW==='studio') viewStudio(c);
+}
+function viewStudio(c){
+  if(ME.role!=='admin'){ go('dash'); return; }
+  try{ localStorage.setItem('pm_playbook_pin_ok','1'); }catch(e){}
+  var fr=e('iframe',{src:'studio.html?embed=1',allow:'display-capture; clipboard-write; clipboard-read',style:'width:100%;height:calc(100vh - 76px);border:0;display:block;background:var(--bg)'});
+  c.appendChild(fr);
 }
 $('#homeLogo').onclick=function(){ if(ME) go('dash'); };
 
@@ -574,7 +582,7 @@ function viewAdmin(c){
   page.appendChild(e('div',{class:'hero',html:'<h1>Content <em>console</em>.</h1><p>Build courses, attach manuals and videos, and track who is progressing.</p>'}));
   var studio=e('div',{style:'display:flex;align-items:center;gap:14px;background:var(--teal-tint2);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:18px'});
   studio.appendChild(e('div',{style:'flex:1;font-size:13.5px;color:var(--mid)',html:'<b style="color:var(--ink)">Guide Studio</b> is where manuals are written and recorded. It is PIN protected, and guides sync here automatically.'}));
-  var sbtn=e('button',{class:'btn btn-primary btn-sm',html:svg('book')+'Open Guide Studio'}); sbtn.onclick=function(){ window.open('studio.html','_blank'); }; studio.appendChild(sbtn);
+  var sbtn=e('button',{class:'btn btn-primary btn-sm',html:svg('book')+'Open Guide Studio'}); sbtn.onclick=function(){ go('studio'); }; studio.appendChild(sbtn);
   page.appendChild(studio);
   var tabs=e('div',{class:'adm-tabs'});
   [['courses','Courses'],['people','Registrants']].forEach(function(o){ var b=e('button',{class:ADM_TAB===o[0]?'on':'',text:o[1]}); b.onclick=function(){ ADM_TAB=o[0]; render(); }; tabs.appendChild(b); });
@@ -767,8 +775,8 @@ function admPeople(host){
   });
 }
 
-/* ============ BOOT (build 2026-07-14-5) ============ */
-try{ console.log('Partners Playbook Academy build 2026-07-14-5'); }catch(e){}
+/* ============ BOOT (build 2026-07-14-6) ============ */
+try{ console.log('Partners Playbook Academy build 2026-07-14-6'); }catch(e){}
 function _clearSplash(){ try{ var boot=$('#boot'); if(boot) boot.classList.add('hide'); }catch(e){} }
 function _ensureData(){ if(!(window.DATA&&DATA.onAuth)){ try{ MODE='mock'; mockData(); }catch(e){} } }
 function _showLogin(){ _clearSplash(); _ensureData(); try{ if(!ME){ $('#auth').classList.remove('hide'); if(DATA&&DATA.onAuth){ DATA.onAuth(onAuthChanged); } else { renderAuth(); } } }catch(e){ try{ renderAuth(); }catch(e2){} } }
